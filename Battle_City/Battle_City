@@ -1,0 +1,61 @@
+from pygame import *
+win_width = 1280
+win_height = 720
+window = display.set_mode((win_width, win_height))
+window.fill((0, 0, 0))
+display.set_caption("Battle_City")
+clock = time.Clock()
+
+class GameSprite(sprite.Sprite):
+   def __init__(self, player_image, player_x, player_y, size_x, size_y, player_speed):
+       sprite.Sprite.__init__(self)
+       self.image = transform.scale(image.load(player_image), (size_x, size_y))
+       self.speed = player_speed
+       self.rect = self.image.get_rect()
+       self.rect.x = player_x
+       self.rect.y = player_y
+   def reset(self):
+       window.blit(self.image, (self.rect.x, self.rect.y))
+
+class Player(GameSprite):
+    def update_1(self):
+        keys = key.get_pressed()
+        if keys[K_w] and self.rect.y > 0:
+           self.rect.y -= self.speed
+        if keys[K_s] and self.rect.y < win_height - 50:
+           self.rect.y += self.speed
+        if keys[K_d] and self.rect.x > win_width - 50:
+            self.rect.x += self.speed
+        if keys[K_a] and self.rect.x > 0:
+            self.rect.x -= self.speed
+
+    def update_2(self):
+        keys = key.get_pressed()
+        if keys[K_i] and self.rect.y > 0:
+           self.rect.y -= self.speed
+        if keys[K_k] and self.rect.y < win_height:
+           self.rect.y += self.speed
+        if keys[K_l] and self.rect.x > 0:
+            self.rect.x += self.speed
+        if keys[K_j] and self.rect.x < win_width:
+            self.rect.x -= self.speed
+
+player_1 = Player("гойда.jpg", 560, 200, 50, 50, 10)
+player_2 = Player("дороже_родины.jpg", 20, 200, 50, 50, 10)
+
+
+game = True
+while game:
+
+    window.fill((0, 0, 0))
+    for e in event.get():
+        if e.type == QUIT:
+            game = False
+
+    player_1.update_1()
+    player_1.reset()
+    player_2.update_2()
+    player_2.reset()
+
+    display.update()
+    clock.tick(60)
