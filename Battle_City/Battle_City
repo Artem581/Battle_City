@@ -1,4 +1,6 @@
 from pygame import *
+from random import randint
+
 win_width = 1280
 win_height = 720
 window = display.set_mode((win_width, win_height))
@@ -6,56 +8,225 @@ window.fill((0, 0, 0))
 display.set_caption("Battle_City")
 clock = time.Clock()
 
+bullets = []
+objects = []
+
 class GameSprite(sprite.Sprite):
-   def __init__(self, player_image, player_x, player_y, size_x, size_y, player_speed):
-       sprite.Sprite.__init__(self)
-       self.image = transform.scale(image.load(player_image), (size_x, size_y))
-       self.speed = player_speed
-       self.rect = self.image.get_rect()
-       self.rect.x = player_x
-       self.rect.y = player_y
-   def reset(self):
-       window.blit(self.image, (self.rect.x, self.rect.y))
+    def __init__(self, player_image, player_x, player_y, size_x, size_y, player_speed):
+        sprite.Sprite.__init__(self)
+        self.original_image = transform.scale(image.load(player_image), (size_x, size_y))
+        self.image = self.original_image.copy()
+        self.speed = player_speed
+        self.rect = self.image.get_rect()
+        self.rect.x = player_x
+        self.rect.y = player_y
+        self.direct = 0
+        self.hp = 4
+        self.alive = True
+        objects.append(self)
+        
+    def reset(self):
+        if self.alive:
+            window.blit(self.image, (self.rect.x, self.rect.y))
+    
+    def damage(self, value):
+        self.hp -= value
+        if self.hp <= 0:
+            self.alive = False
+            while True:
+                self.rect.x = randint(0, (win_width - 50) // 50) * 50
+                self.rect.y = randint(1, (win_height - 50) // 50) * 50
+                collision = False
+                for obj in objects:
+                    if obj != self and obj.rect.colliderect(self.rect):
+                        collision = True
+                        break
+                if not collision:
+                    self.hp = 30
+                    self.alive = True
+                    self.image = self.original_image.copy()
+                    self.rect = self.image.get_rect(topleft=(self.rect.x, self.rect.y))
+                    break
+
+class Bullet:
+    def __init__(self, starting, x, y, b_x, b_y):
+        self.starting = starting
+        self.x = x
+        self.y = y
+        self.b_x = b_x
+        self.b_y = b_y
+        bullets.append(self)
+    
+    def update(self):
+        self.x += self.b_x
+        self.y += self.b_y
+        
+        if self.x < 0 or self.x > win_width or self.y < 0 or self.y > win_height:
+            bullets.remove(self)
+            return
+        
+        for obj in objects:
+            if obj != self.starting and obj.rect.collidepoint(self.x, self.y):
+                obj.damage(1)
+                if self in bullets:
+                    bullets.remove(self)
+                return
+    
+    def draw(self):
+        draw.circle(window, 'yellow', (int(self.x), int(self.y)), 2)
 
 class Player(GameSprite):
-    def update_1(self):
+    def update_1(self):    
         keys = key.get_pressed()
-        if keys[K_w] and self.rect.y > 0:
-           self.rect.y -= self.speed
-        if keys[K_s] and self.rect.y < win_height - 50:
-           self.rect.y += self.speed
-        if keys[K_d] and self.rect.x > win_width - 50:
+        old_x, old_y = self.rect.x, self.rect.y
+        
+        if keys[K_w] and self.rect.y > 5:
+            self.rect.y -= self.speed
+            self.direct = 0
+        if keys[K_s] and self.rect.y < win_height - 55:
+            self.rect.y += self.speed
+            self.direct = 2
+        if keys[K_d] and self.rect.x < win_width - 55:
             self.rect.x += self.speed
-        if keys[K_a] and self.rect.x > 0:
+            self.direct = 1
+        if keys[K_a] and self.rect.x > 5:
             self.rect.x -= self.speed
+            self.direct = 3
+        
+        if keys[K_w] or keys[K_s] or keys[K_d] or keys[K_a]:
+            self.image = transform.rotate(self.original_image, -self.direct * 90)
+            center = self.rect.center
+            self.rect = self.image.get_rect()
+            self.rect.center = center
+        
+        for obj in objects:
+            if obj != self and self.rect.colliderect(obj.rect):
+                self.rect.x, self.rect.y = old_x, old_y
+                if keys[K_w] or keys[K_s] or keys[K_d] or keys[K_a]:
+                    self.image = transform.rotate(self.original_image, -self.direct * 90)
+                    center = self.rect.center
+                    self.rect = self.image.get_rect()
+                    self.rect.center = center
+        
+        if keys[K_e]:
+            if self.direct == 0:
+                b_x = 0
+                b_y = -5
+            elif self.direct == 1:
+                b_x = 5
+                b_y = 0
+            elif self.direct == 2:
+                b_x = 0
+                b_y = 5
+            else:
+                b_x = -5
+                b_y = 0
+            Bullet(self, self.rect.centerx, self.rect.centery, b_x, b_y)
 
     def update_2(self):
+        if not self.alive:
+            return
+            
         keys = key.get_pressed()
-        if keys[K_i] and self.rect.y > 0:
-           self.rect.y -= self.speed
-        if keys[K_k] and self.rect.y < win_height:
-           self.rect.y += self.speed
-        if keys[K_l] and self.rect.x > 0:
+        old_x, old_y = self.rect.x, self.rect.y
+        
+        if keys[K_i] and self.rect.y > 5:
+            self.rect.y -= self.speed
+            self.direct = 0
+        if keys[K_k] and self.rect.y < win_height - 55:
+            self.rect.y += self.speed
+            self.direct = 2
+        if keys[K_l] and self.rect.x < win_width - 55:
             self.rect.x += self.speed
-        if keys[K_j] and self.rect.x < win_width:
+            self.direct = 1
+        if keys[K_j] and self.rect.x > 5:
             self.rect.x -= self.speed
+            self.direct = 3
+        
+        if keys[K_i] or keys[K_k] or keys[K_l] or keys[K_j]:
+            self.image = transform.rotate(self.original_image, -self.direct * 90)
+            center = self.rect.center
+            self.rect = self.image.get_rect()
+            self.rect.center = center
+        
+        for obj in objects:
+            if obj != self and self.rect.colliderect(obj.rect):
+                self.rect.x, self.rect.y = old_x, old_y
+                if keys[K_i] or keys[K_k] or keys[K_l] or keys[K_j]:
+                    self.image = transform.rotate(self.original_image, -self.direct * 90)
+                    center = self.rect.center
+                    self.rect = self.image.get_rect()
+                    self.rect.center = center
+        
+        if keys[K_u]:
+            if self.direct == 0:
+                b_x = 0
+                b_y = -5
+            elif self.direct == 1:
+                b_x = 5
+                b_y = 0
+            elif self.direct == 2:
+                b_x = 0
+                b_y = 5
+            else:
+                b_x = -5
+                b_y = 0
+            Bullet(self, self.rect.centerx, self.rect.centery, b_x, b_y)
 
-player_1 = Player("гойда.jpg", 560, 200, 50, 50, 10)
-player_2 = Player("дороже_родины.jpg", 20, 200, 50, 50, 10)
+class Block:
+    def __init__(self, x, y):
+        objects.append(self)
+        self.rect = Rect(x, y, 50, 50)
+        self.hp = 5
+    
+    def draw(self):
+        draw.rect(window, (178, 34, 34), self.rect)
 
+    
+    def damage(self, value):
+        self.hp -= value
+        if self.hp <= 0:
+            objects.remove(self)
+
+player_1 = Player("Т-90М.png", 560, 200, 50, 100, 5)
+player_2 = Player("M1A2.png", 20, 200, 50, 100, 5)
+
+for _ in range(40):
+    while True:
+        x = randint(0, win_width // 50) * 50
+        y = randint(1, win_height // 50) * 50
+        rect = Rect(x, y, 50, 50)
+        collision = False
+        for obj in objects:
+            if rect.colliderect(obj.rect):
+                collision = True
+                break
+        if not collision:
+            Block(x, y)
+            break
 
 game = True
 while game:
-
     window.fill((0, 0, 0))
+    
     for e in event.get():
         if e.type == QUIT:
             game = False
-
+        if e.type == KEYDOWN and e.key == K_ESCAPE:
+            game = False
+    
+    for bullet in bullets[:]:
+        bullet.update()
+        bullet.draw()
+    
     player_1.update_1()
     player_1.reset()
     player_2.update_2()
     player_2.reset()
-
+    
+    for obj in objects:
+        if hasattr(obj, 'draw'):
+            obj.draw()
+    
     display.update()
     clock.tick(60)
