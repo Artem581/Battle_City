@@ -176,11 +176,15 @@ class Player(GameSprite):
 class Block:
     def __init__(self, x, y):
         objects.append(self)
-        self.rect = Rect(x, y, 50, 50)
+        self.original_image = transform.scale(image.load("стена.png"), (50, 50))
+        self.image = self.original_image.copy()
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
         self.hp = 30
 
     def draw(self):
-        draw.rect(window, (120, 120, 120), self.rect)
+        window.blit(self.image, (self.rect.x, self.rect.y))
 
     def damage(self, value):
         self.hp -= value
